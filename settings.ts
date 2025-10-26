@@ -54,10 +54,12 @@ export class BasesKanbanSettingTab extends PluginSettingTab {
 
 		// Default Columns section
 		containerEl.createEl("h3", { text: "Default Columns" });
-		
+
 		new Setting(containerEl)
 			.setName("Default Column Names")
-			.setDesc("Set the default column names that will be used when no status values are found. Enter one column name per line.")
+			.setDesc(
+				"Set the default column names that will be used when no status values are found. Enter one column name per line."
+			)
 			.addTextArea((textArea) => {
 				textArea
 					.setPlaceholder("Todo\nIn Progress\nCompleted")
@@ -66,22 +68,24 @@ export class BasesKanbanSettingTab extends PluginSettingTab {
 						// Split by newlines and filter out empty strings
 						const columns = value
 							.split("\n")
-							.map(col => col.trim())
-							.filter(col => col.length > 0);
-						
+							.map((col) => col.trim())
+							.filter((col) => col.length > 0);
+
 						this.plugin.settings.defaultColumns = columns;
 						await this.plugin.saveSettings();
 					});
-				
+
 				// Make the text area a bit bigger
 				textArea.inputEl.rows = 4;
 				textArea.inputEl.style.width = "100%";
 			});
 
 		// Show current default columns
-		const currentColumnsEl = containerEl.createEl("div", { 
-			cls: "setting-item-description" 
+		const currentColumnsEl = containerEl.createEl("div", {
+			cls: "setting-item-description",
 		});
-		currentColumnsEl.innerHTML = `<strong>Current default columns:</strong> ${this.plugin.settings.defaultColumns.join(", ")}`;
+		currentColumnsEl.innerHTML = `<strong>Current default columns:</strong> ${this.plugin.settings.defaultColumns.join(
+			", "
+		)}`;
 	}
 }

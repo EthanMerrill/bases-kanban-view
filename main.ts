@@ -16,7 +16,11 @@ import {
 import { getEntryStatus } from "./status";
 import { createKanbanCard } from "./card";
 import { createKanbanColumns } from "./column";
-import { BasesKanbanSettings, DEFAULT_SETTINGS, BasesKanbanSettingTab } from "./settings";
+import {
+	BasesKanbanSettings,
+	DEFAULT_SETTINGS,
+	BasesKanbanSettingTab,
+} from "./settings";
 
 export const KanbanViewType = "kanban-view";
 
@@ -111,10 +115,13 @@ export class MyBasesView extends BasesView implements HoverParent {
 		}
 
 		// If no status values found or only empty strings, use default columns
-		const filteredStatusOrder = statusOrder.filter(status => status.trim() !== "");
-		const finalStatusOrder = filteredStatusOrder.length > 0 
-			? filteredStatusOrder 
-			: this.plugin.settings.defaultColumns;
+		const filteredStatusOrder = statusOrder.filter(
+			(status) => status.trim() !== ""
+		);
+		const finalStatusOrder =
+			filteredStatusOrder.length > 0
+				? filteredStatusOrder
+				: this.plugin.settings.defaultColumns;
 
 		// Create columns dynamically based on found statuses or default columns
 		const statusColumns = createKanbanColumns(
