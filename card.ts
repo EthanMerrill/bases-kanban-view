@@ -1,13 +1,54 @@
-import { App, Keymap, parsePropertyId, HoverParent } from "obsidian";
+import { App, Keymap, HoverParent, TFile } from "obsidian";
+import { setEntryStatus } from "./status";
 
 /**
- * Creates a kanban card for a bases entry
+ * Simple property ID parser (fallback implementation)
+ * @param propertyId The property ID string
+ * @returns Object with type and name
+ */
+function parsePropertyId(propertyId: string): { type: string; name: string } {
+	if (propertyId.includes(".")) {
+		const [type, name] = propertyId.split(".", 2);
+		return { type, name };
+	}
+	return { type: "note", name: propertyId };
+}
+
+/**
+ * Updates the status property in a file's frontmatter using the status helper
+ * @param app The Obsidian app instance
+ * @param file The file to update
+ * @param statusProperty The name of the status property
+ * @param newStatus The new status value
+ */
+async function updateFileStatus(
+	app: App,
+	file: TFile,
+	statusProperty: string,
+	newStatus: string
+): Promise<void> {
+	try {
+		console.log(`[DragDrop] Updating ${file.name} status to: ${newStatus}`);
+		
+		// Use the helper function from status.ts
+		setEntryStatus(file, app, statusProperty, newStatus);
+		
+		console.log(`[DragDrop] Successfully updated ${file.name} status`);
+	} catch (error) {
+		console.error(`[DragDrop] Error updating file status:`, error);
+	}
+}
+
+/**
+ * Creates a kanban card for a bases entry with drag-and-drop functionality
  * @param entry The bases entry
  * @param cardsContainer The container element to add the card to
  * @param app The Obsidian app instance
  * @param hoverParent The hover parent for link previews
  * @param config The view config for getting property order
  * @param statusProperty The status property name to skip in card content
+ * @param currentStatus The current status of this card
+ * @param onStatusChange Callback function when status changes
  */
 export function createKanbanCard(
 	entry: any,
@@ -15,22 +56,23 @@ export function createKanbanCard(
 	app: App,
 	hoverParent: HoverParent,
 	config: any,
-	statusProperty: string
+	statusProperty: string,
+	currentStatus: string,
+	onStatusChange?: () => void
 ): void {
-	console.log(
-		`[CardCreation] Starting card creation for: ${entry.file.name}`
-	);
-
 	try {
 		// Create card element
 		const cardEl = cardsContainer.createDiv(`kanban-card`);
-		console.log(`[CardCreation] Created card element`);
+
+		// Make card draggable
+		cardEl.draggable = true;
+		cardEl.setAttribute("data-file-path", entry.file.path);
+		cardEl.setAttribute("data-current-status", currentStatus);
 
 		// Add file name as card title
 		const titleEl = cardEl.createEl("h4", "kanban-card-title");
 		const fileName = entry.file.name;
 		const linkEl = titleEl.createEl("a", { text: fileName });
-		console.log(`[CardCreation] Added title and link for: ${fileName}`);
 
 		// Make file name clickable
 		linkEl.onClickEvent((evt) => {
@@ -52,6 +94,26 @@ export function createKanbanCard(
 			});
 		});
 		console.log(`[CardCreation] Added click and hover handlers`);
+
+		// Add drag event handlers
+		cardEl.addEventListener("dragstart", (e) => {
+			console.log(`[DragDrop] Starting drag for: ${fileName}`);
+			e.dataTransfer?.setData("text/plain", entry.file.path);
+			e.dataTransfer?.setData(
+				"application/json",
+				JSON.stringify({
+					filePath: entry.file.path,
+					currentStatus: currentStatus,
+					fileName: fileName,
+				})
+			);
+			cardEl.classList.add("kanban-card-dragging");
+		});
+
+		cardEl.addEventListener("dragend", (e) => {
+			console.log(`[DragDrop] Ending drag for: ${fileName}`);
+			cardEl.classList.remove("kanban-card-dragging");
+		});
 
 		// Add properties as card content
 		const contentEl = cardEl.createDiv("kanban-card-content");
@@ -76,15 +138,8 @@ export function createKanbanCard(
 					"kanban-property-value"
 				);
 				valueSpan.textContent = value.toString();
-				console.log(
-					`[CardCreation] Added property: ${name} = ${value}`
-				);
 			}
 		}
-
-		console.log(
-			`[CardCreation] Successfully completed card creation for: ${fileName}`
-		);
 	} catch (error) {
 		console.error(
 			`[CardCreation] Error in createKanbanCard for ${entry.file.name}:`,
@@ -92,4 +147,74 @@ export function createKanbanCard(
 		);
 		throw error; // Re-throw to be caught by the calling function
 	}
+}
+
+/**
+ * Makes a column accept drag-and-drop operations
+ * @param columnElement The column element to make droppable
+ * @param targetStatus The status value for this column
+ * @param statusProperty The name of the status property
+ * @param app The Obsidian app instance
+ * @param onDrop Callback function when a card is dropped
+ */
+export function makeColumnDroppable(
+	columnElement: HTMLElement,
+	targetStatus: string,
+	statusProperty: string,
+	app: App,
+	onDrop?: () => void
+): void {
+	const cardsContainer = columnElement.querySelector(
+		".kanban-cards-container"
+	) as HTMLElement;
+	if (!cardsContainer) return;
+
+	cardsContainer.addEventListener("dragover", (e) => {
+		e.preventDefault();
+		cardsContainer.classList.add("kanban-drop-zone-active");
+	});
+
+	cardsContainer.addEventListener("dragleave", (e) => {
+		// Only remove the class if we're actually leaving the container
+		if (!cardsContainer.contains(e.relatedTarget as Node)) {
+			cardsContainer.classList.remove("kanban-drop-zone-active");
+		}
+	});
+
+	cardsContainer.addEventListener("drop", async (e) => {
+		e.preventDefault();
+		cardsContainer.classList.remove("kanban-drop-zone-active");
+
+		try {
+			const dragData = e.dataTransfer?.getData("application/json");
+			if (!dragData) return;
+
+			const { filePath, currentStatus, fileName } = JSON.parse(dragData);
+
+			// Don't do anything if dropped in the same column
+			if (currentStatus === targetStatus) {
+				console.log(
+					`[DragDrop] Card ${fileName} dropped in same column, no action needed`
+				);
+				return;
+			}
+
+			console.log(
+				`[DragDrop] Dropping ${fileName} into ${targetStatus} column`
+			);
+
+			// Find the file and update its status
+			const file = app.vault.getAbstractFileByPath(filePath);
+			if (file instanceof TFile) {
+				await updateFileStatus(app, file, statusProperty, targetStatus);
+
+				// Call the callback to refresh the view
+				if (onDrop) {
+					onDrop();
+				}
+			}
+		} catch (error) {
+			console.error("[DragDrop] Error handling drop:", error);
+		}
+	});
 }

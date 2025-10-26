@@ -10,11 +10,10 @@ import {
 	HoverPopover,
 	QueryController,
 	Keymap,
-	parsePropertyId,
 	PluginSettingTab,
 	Setting,
 } from "obsidian";
-import { getEntryStatus } from "./getStatus";
+import { getEntryStatus } from "./status";
 import { createKanbanCard } from "./card";
 import { createKanbanColumns } from "./column";
 
@@ -68,8 +67,7 @@ export class MyBasesView extends BasesView implements HoverParent {
 		// Clear previous content
 		this.containerEl.empty();
 
-		const statusProperty =
-			String(this.config.get("statusProperty")) || "status";
+		const statusProperty = "status"; // in the future be able to set this in settings and ideally at the base - level
 
 		// Create kanban board container
 		const kanbanEl = this.containerEl.createDiv("kanban-board");
@@ -97,10 +95,15 @@ export class MyBasesView extends BasesView implements HoverParent {
 		}
 
 		// Create columns dynamically based on found statuses
-		const statusColumns = createKanbanColumns(statusOrder, kanbanEl);
+		const statusColumns = createKanbanColumns(
+			statusOrder,
+			kanbanEl,
+			statusProperty,
+			app,
+			() => this.onDataUpdated() // Refresh callback when card is dropped
+		);
 
 		// Second pass: create cards in appropriate columns
-		console.log(`[KanbanView] Creating cards in columns...`, ...allEntries);
 		console.log(
 			`[KanbanView] Total entries to process: ${allEntries.length}`
 		);
@@ -137,7 +140,9 @@ export class MyBasesView extends BasesView implements HoverParent {
 					app,
 					this,
 					this.config,
-					statusProperty
+					statusProperty,
+					status, // Current status for drag-and-drop
+					() => this.onDataUpdated() // Refresh callback
 				);
 				console.log(
 					`[KanbanCard] Successfully created card for: ${entry.file.name}`

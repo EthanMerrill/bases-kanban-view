@@ -118,6 +118,32 @@ Kanban Bases View Styles
 	word-break: break-word;
 }
 
+/* Drag and Drop Styles */
+.kanban-card {
+	cursor: grab;
+}
+
+.kanban-card:active {
+	cursor: grabbing;
+}
+
+.kanban-card-dragging {
+	opacity: 0.5;
+	transform: rotate(5deg);
+	z-index: 1000;
+}
+
+.kanban-drop-zone-active {
+	background-color: var(--interactive-accent-hover) !important;
+	border: 2px dashed var(--interactive-accent) !important;
+	border-radius: 8px;
+}
+
+.kanban-cards-container {
+	min-height: 100px;
+	transition: background-color 0.2s ease, border 0.2s ease;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
 	.kanban-board {
