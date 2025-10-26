@@ -17,7 +17,7 @@ Add a "status" property to the frontmatter / properties section of your notes. S
 
 -   [ ] Publish to the obsidian community plugins repo
 -   [ ] Allow Re-ordering of columns
--   [ ] add default statuses in settings
--   [ ] Allow setting of status property at the base level
+-   [x] add default statuses in settings
+-   [ ] Allow setting of status values at the base level
 -   [ ] Improve styling and responsiveness
     -   [ ] Check if we can avoid a complete re-render on every change

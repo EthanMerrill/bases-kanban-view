@@ -16,37 +16,47 @@ import {
 import { getEntryStatus } from "./status";
 import { createKanbanCard } from "./card";
 import { createKanbanColumns } from "./column";
-
-// Remember to rename these classes and interfaces!
-
-// interface MyPluginSettings {
-// 	mySetting: string;
-// }
-
-// const DEFAULT_SETTINGS: MyPluginSettings = {
-// 	mySetting: "default",
-// };
+import { BasesKanbanSettings, DEFAULT_SETTINGS, BasesKanbanSettingTab } from "./settings";
 
 export const KanbanViewType = "kanban-view";
 
-export default class MyPlugin extends Plugin {
+export default class BasesKanbanViewPlugin extends Plugin {
+	settings: BasesKanbanSettings;
+
 	async onload() {
+		await this.loadSettings();
+
+		// Add settings tab
+		this.addSettingTab(new BasesKanbanSettingTab(this.app, this));
+
 		// Tell Obsidian about the new view type that this plugin provides.
 		this.registerBasesView(KanbanViewType, {
 			name: "Kanban",
 			icon: "lucide-columns",
 			factory: (controller, containerEl) => {
-				return new MyBasesView(controller, containerEl);
+				return new MyBasesView(controller, containerEl, this);
 			},
 			options: () => [
 				{
 					type: "text",
 					displayName: "Status Property",
 					key: "statusProperty",
-					default: "status",
+					default: this.settings.defaultStatusProperty,
 				},
 			],
 		});
+	}
+
+	async loadSettings() {
+		this.settings = Object.assign(
+			{},
+			DEFAULT_SETTINGS,
+			await this.loadData()
+		);
+	}
+
+	async saveSettings() {
+		await this.saveData(this.settings);
 	}
 }
 
@@ -55,10 +65,16 @@ export class MyBasesView extends BasesView implements HoverParent {
 
 	readonly type = KanbanViewType;
 	private containerEl: HTMLElement;
+	private plugin: BasesKanbanViewPlugin;
 
-	constructor(controller: QueryController, parentEl: HTMLElement) {
+	constructor(
+		controller: QueryController,
+		parentEl: HTMLElement,
+		plugin: BasesKanbanViewPlugin
+	) {
 		super(controller);
 		this.containerEl = parentEl.createDiv("bases-kanban-view-container");
+		this.plugin = plugin;
 	}
 
 	public onDataUpdated(): void {
@@ -67,7 +83,7 @@ export class MyBasesView extends BasesView implements HoverParent {
 		// Clear previous content
 		this.containerEl.empty();
 
-		const statusProperty = "status"; // in the future be able to set this in settings and ideally at the base - level
+		const statusProperty = this.plugin.settings.defaultStatusProperty; // Use setting instead of hardcoded value
 
 		// Create kanban board container
 		const kanbanEl = this.containerEl.createDiv("kanban-board");
@@ -94,9 +110,15 @@ export class MyBasesView extends BasesView implements HoverParent {
 			}
 		}
 
-		// Create columns dynamically based on found statuses
+		// If no status values found or only empty strings, use default columns
+		const filteredStatusOrder = statusOrder.filter(status => status.trim() !== "");
+		const finalStatusOrder = filteredStatusOrder.length > 0 
+			? filteredStatusOrder 
+			: this.plugin.settings.defaultColumns;
+
+		// Create columns dynamically based on found statuses or default columns
 		const statusColumns = createKanbanColumns(
-			statusOrder,
+			finalStatusOrder,
 			kanbanEl,
 			statusProperty,
 			app,
@@ -119,17 +141,23 @@ export class MyBasesView extends BasesView implements HoverParent {
 				}: ${entry.file.name} with status: "${status}"`
 			);
 
+			// If using default columns and status is empty, place in first column
+			let targetStatus = status;
+			if (filteredStatusOrder.length === 0 && status.trim() === "") {
+				targetStatus = this.plugin.settings.defaultColumns[0] || "";
+			}
+
 			// check if the container exists for the status column first
-			const cardsContainer = statusColumns.get(status);
+			const cardsContainer = statusColumns.get(targetStatus);
 			if (!cardsContainer) {
 				console.log(
-					`[KanbanCard] ERROR: No container found for status: "${status}"`
+					`[KanbanCard] ERROR: No container found for status: "${targetStatus}"`
 				);
 				return;
 			}
 
 			console.log(
-				`[KanbanCard] Container found for status: "${status}", creating card...`
+				`[KanbanCard] Container found for status: "${targetStatus}", creating card...`
 			);
 
 			try {
@@ -141,7 +169,7 @@ export class MyBasesView extends BasesView implements HoverParent {
 					this,
 					this.config,
 					statusProperty,
-					status, // Current status for drag-and-drop
+					targetStatus, // Current status for drag-and-drop
 					() => this.onDataUpdated() // Refresh callback
 				);
 				console.log(
