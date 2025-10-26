@@ -1,134 +1,155 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import {
+	App,
+	Editor,
+	MarkdownView,
+	Modal,
+	Notice,
+	Plugin,
+	BasesView,
+	HoverParent,
+	HoverPopover,
+	QueryController,
+	Keymap,
+	parsePropertyId,
+	PluginSettingTab,
+	Setting,
+} from "obsidian";
+import { getEntryStatus } from "./getStatus";
+import { createKanbanCard } from "./card";
+import { createKanbanColumns } from "./column";
 
 // Remember to rename these classes and interfaces!
 
-interface MyPluginSettings {
-	mySetting: string;
-}
+// interface MyPluginSettings {
+// 	mySetting: string;
+// }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
-}
+// const DEFAULT_SETTINGS: MyPluginSettings = {
+// 	mySetting: "default",
+// };
+
+export const KanbanViewType = "kanban-view";
 
 export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
-
 	async onload() {
-		await this.loadSettings();
-
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (_evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
+		// Tell Obsidian about the new view type that this plugin provides.
+		this.registerBasesView(KanbanViewType, {
+			name: "Kanban",
+			icon: "lucide-columns",
+			factory: (controller, containerEl) => {
+				return new MyBasesView(controller, containerEl);
+			},
+			options: () => [
+				{
+					type: "text",
+					displayName: "Status Property",
+					key: "statusProperty",
+					default: "status",
+				},
+			],
 		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
+	}
+}
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
+export class MyBasesView extends BasesView implements HoverParent {
+	hoverPopover: HoverPopover | null;
 
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, _view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
+	readonly type = KanbanViewType;
+	private containerEl: HTMLElement;
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
+	constructor(controller: QueryController, parentEl: HTMLElement) {
+		super(controller);
+		this.containerEl = parentEl.createDiv("bases-kanban-view-container");
+	}
+
+	public onDataUpdated(): void {
+		const { app } = this;
+
+		// Clear previous content
+		this.containerEl.empty();
+
+		const statusProperty =
+			String(this.config.get("statusProperty")) || "status";
+
+		// Create kanban board container
+		const kanbanEl = this.containerEl.createDiv("kanban-board");
+
+		// First pass: collect all unique status values
+		const statusOrder: string[] = [];
+
+		// Collect all entries and their status values
+		const allEntries: Array<{ entry: any; status: string }> = [];
+
+		for (const group of this.data.groupedData) {
+			for (const entry of group.entries) {
+				// Use helper to resolve status from property or frontmatter
+				const status = String(
+					getEntryStatus(entry, app, statusProperty) || ""
+				);
+
+				allEntries.push({ entry, status });
+				// Track unique statuses in order of appearance
+				if (!statusOrder.includes(status)) {
+					statusOrder.push(status);
+					console.log(`[KanbanView] Found new status: ${status}`);
 				}
 			}
+		}
+
+		// Create columns dynamically based on found statuses
+		const statusColumns = createKanbanColumns(statusOrder, kanbanEl);
+
+		// Second pass: create cards in appropriate columns
+		console.log(`[KanbanView] Creating cards in columns...`, ...allEntries);
+		console.log(
+			`[KanbanView] Total entries to process: ${allEntries.length}`
+		);
+		console.log(
+			`[KanbanView] Available status columns:`,
+			Array.from(statusColumns.keys())
+		);
+
+		allEntries.forEach(({ entry, status }, index) => {
+			console.log(
+				`[KanbanCard] Processing entry ${index + 1}/${
+					allEntries.length
+				}: ${entry.file.name} with status: "${status}"`
+			);
+
+			// check if the container exists for the status column first
+			const cardsContainer = statusColumns.get(status);
+			if (!cardsContainer) {
+				console.log(
+					`[KanbanCard] ERROR: No container found for status: "${status}"`
+				);
+				return;
+			}
+
+			console.log(
+				`[KanbanCard] Container found for status: "${status}", creating card...`
+			);
+
+			try {
+				// Use the card creation helper
+				createKanbanCard(
+					entry,
+					cardsContainer,
+					app,
+					this,
+					this.config,
+					statusProperty
+				);
+				console.log(
+					`[KanbanCard] Successfully created card for: ${entry.file.name}`
+				);
+			} catch (error) {
+				console.error(
+					`[KanbanCard] Error creating card for ${entry.file.name}:`,
+					error
+				);
+			}
 		});
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
-	}
-
-	onunload() {
-
-	}
-
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-	}
-
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		const {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
-	}
-}
-
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
-
-	constructor(app: App, plugin: MyPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-
-	display(): void {
-		const {containerEl} = this;
-
-		containerEl.empty();
-
-		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
+		console.log(`[KanbanView] Finished processing all entries`);
 	}
 }
