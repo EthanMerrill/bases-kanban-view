@@ -4,7 +4,7 @@
 	"version": "1.0.0",
 	"minAppVersion": "1.9.10",
 	"description": "A Kanban view for Bases.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"isDesktopOnly": false
+	"author": "Ethan Merrill",
+	"authorUrl": "https://ethanmerrill.com",
+	"isDesktopOnly": true
 }
