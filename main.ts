@@ -1,17 +1,9 @@
 import {
-	App,
-	Editor,
-	MarkdownView,
-	Modal,
-	Notice,
 	Plugin,
 	BasesView,
 	HoverParent,
 	HoverPopover,
 	QueryController,
-	Keymap,
-	PluginSettingTab,
-	Setting,
 } from "obsidian";
 import { getEntryStatus } from "./status";
 import { createKanbanCard } from "./card";
@@ -109,7 +101,6 @@ export class MyBasesView extends BasesView implements HoverParent {
 				// Track unique statuses in order of appearance
 				if (!statusOrder.includes(status)) {
 					statusOrder.push(status);
-					console.log(`[KanbanView] Found new status: ${status}`);
 				}
 			}
 		}
@@ -133,20 +124,7 @@ export class MyBasesView extends BasesView implements HoverParent {
 		);
 
 		// Second pass: create cards in appropriate columns
-		console.log(
-			`[KanbanView] Total entries to process: ${allEntries.length}`
-		);
-		console.log(
-			`[KanbanView] Available status columns:`,
-			Array.from(statusColumns.keys())
-		);
-
 		allEntries.forEach(({ entry, status }, index) => {
-			console.log(
-				`[KanbanCard] Processing entry ${index + 1}/${
-					allEntries.length
-				}: ${entry.file.name} with status: "${status}"`
-			);
 
 			// If using default columns and status is empty, place in first column
 			let targetStatus = status;
@@ -157,15 +135,8 @@ export class MyBasesView extends BasesView implements HoverParent {
 			// check if the container exists for the status column first
 			const cardsContainer = statusColumns.get(targetStatus);
 			if (!cardsContainer) {
-				console.log(
-					`[KanbanCard] ERROR: No container found for status: "${targetStatus}"`
-				);
 				return;
 			}
-
-			console.log(
-				`[KanbanCard] Container found for status: "${targetStatus}", creating card...`
-			);
 
 			try {
 				// Use the card creation helper
@@ -179,9 +150,6 @@ export class MyBasesView extends BasesView implements HoverParent {
 					targetStatus, // Current status for drag-and-drop
 					() => this.onDataUpdated() // Refresh callback
 				);
-				console.log(
-					`[KanbanCard] Successfully created card for: ${entry.file.name}`
-				);
 			} catch (error) {
 				console.error(
 					`[KanbanCard] Error creating card for ${entry.file.name}:`,
@@ -189,7 +157,5 @@ export class MyBasesView extends BasesView implements HoverParent {
 				);
 			}
 		});
-
-		console.log(`[KanbanView] Finished processing all entries`);
 	}
 }

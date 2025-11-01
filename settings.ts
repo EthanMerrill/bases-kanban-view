@@ -77,15 +77,18 @@ export class BasesKanbanSettingTab extends PluginSettingTab {
 
 				// Make the text area a bit bigger
 				textArea.inputEl.rows = 4;
-				textArea.inputEl.style.width = "100%";
+				textArea.inputEl.addClass("bases-kanban-settings-textarea");
 			});
 
 		// Show current default columns
 		const currentColumnsEl = containerEl.createEl("div", {
 			cls: "setting-item-description",
 		});
-		currentColumnsEl.innerHTML = `<strong>Current default columns:</strong> ${this.plugin.settings.defaultColumns.join(
-			", "
-		)}`;
+		currentColumnsEl.createEl("strong", {
+			text: "Current default columns: ",
+		});
+		currentColumnsEl.createSpan({
+			text: this.plugin.settings.defaultColumns.join(", "),
+		});
 	}
 }

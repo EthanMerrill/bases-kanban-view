@@ -144,6 +144,11 @@ Kanban Bases View Styles
 	transition: background-color 0.2s ease, border 0.2s ease;
 }
 
+/* Settings styles */
+.bases-kanban-settings-textarea {
+	width: 100% !important;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
 	.kanban-board {

@@ -28,12 +28,9 @@ async function updateFileStatus(
 	newStatus: string
 ): Promise<void> {
 	try {
-		console.log(`[DragDrop] Updating ${file.name} status to: ${newStatus}`);
-		
 		// Use the helper function from status.ts
 		setEntryStatus(file, app, statusProperty, newStatus);
 		
-		console.log(`[DragDrop] Successfully updated ${file.name} status`);
 	} catch (error) {
 		console.error(`[DragDrop] Error updating file status:`, error);
 	}
@@ -93,11 +90,9 @@ export function createKanbanCard(
 				linktext: entry.file.path,
 			});
 		});
-		console.log(`[CardCreation] Added click and hover handlers`);
-
+		
 		// Add drag event handlers
 		cardEl.addEventListener("dragstart", (e) => {
-			console.log(`[DragDrop] Starting drag for: ${fileName}`);
 			e.dataTransfer?.setData("text/plain", entry.file.path);
 			e.dataTransfer?.setData(
 				"application/json",
@@ -111,14 +106,12 @@ export function createKanbanCard(
 		});
 
 		cardEl.addEventListener("dragend", (e) => {
-			console.log(`[DragDrop] Ending drag for: ${fileName}`);
 			cardEl.classList.remove("kanban-card-dragging");
 		});
 
 		// Add properties as card content
 		const contentEl = cardEl.createDiv("kanban-card-content");
 		const order = config.getOrder();
-		console.log(`[CardCreation] Property order:`, order);
 
 		for (const propertyName of order) {
 			const { type, name } = parsePropertyId(propertyName);
@@ -193,15 +186,8 @@ export function makeColumnDroppable(
 
 			// Don't do anything if dropped in the same column
 			if (currentStatus === targetStatus) {
-				console.log(
-					`[DragDrop] Card ${fileName} dropped in same column, no action needed`
-				);
 				return;
 			}
-
-			console.log(
-				`[DragDrop] Dropping ${fileName} into ${targetStatus} column`
-			);
 
 			// Find the file and update its status
 			const file = app.vault.getAbstractFileByPath(filePath);
