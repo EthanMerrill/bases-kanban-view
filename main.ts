@@ -4,6 +4,8 @@ import {
 	HoverParent,
 	HoverPopover,
 	QueryController,
+	TFile,
+	BasesEntry,
 } from "obsidian";
 import { getEntryStatus } from "./status";
 import { createKanbanCard } from "./card";
@@ -88,7 +90,7 @@ export class MyBasesView extends BasesView implements HoverParent {
 		const statusOrder: string[] = [];
 
 		// Collect all entries and their status values
-		const allEntries: Array<{ entry: any; status: string }> = [];
+		const allEntries: Array<{ entry: BasesEntry; status: string }> = [];
 
 		for (const group of this.data.groupedData) {
 			for (const entry of group.entries) {
@@ -125,7 +127,6 @@ export class MyBasesView extends BasesView implements HoverParent {
 
 		// Second pass: create cards in appropriate columns
 		allEntries.forEach(({ entry, status }, index) => {
-
 			// If using default columns and status is empty, place in first column
 			let targetStatus = status;
 			if (filteredStatusOrder.length === 0 && status.trim() === "") {

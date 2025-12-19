@@ -1,3 +1,4 @@
+import BasesKanbanViewPlugin from "main";
 import { App, PluginSettingTab, Setting } from "obsidian";
 
 export interface BasesKanbanSettings {
@@ -13,9 +14,9 @@ export const DEFAULT_SETTINGS: BasesKanbanSettings = {
 };
 
 export class BasesKanbanSettingTab extends PluginSettingTab {
-	plugin: any; // We'll type this properly when we import it in main.ts
+	plugin: BasesKanbanViewPlugin;
 
-	constructor(app: App, plugin: any) {
+	constructor(app: App, plugin: BasesKanbanViewPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -32,7 +33,7 @@ export class BasesKanbanSettingTab extends PluginSettingTab {
 			.setDesc("The default property name to use for status tracking")
 			.addText((text) =>
 				text
-					.setPlaceholder("status")
+					.setPlaceholder("Status")
 					.setValue(this.plugin.settings.defaultStatusProperty)
 					.onChange(async (value) => {
 						this.plugin.settings.defaultStatusProperty = value;

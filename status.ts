@@ -1,4 +1,4 @@
-import { App, TFile } from "obsidian";
+import { App, BasesEntry, TFile } from "obsidian";
 
 /**
  * Extracts the status value from a bases entry using multiple fallback strategies
@@ -8,7 +8,7 @@ import { App, TFile } from "obsidian";
  * @returns The status string or "No Status" if not found
  */
 export function getEntryStatus(
-	entry: any,
+	entry: BasesEntry,
 	app: App,
 	statusProperty: string = "status"
 ): string {

@@ -1,4 +1,11 @@
-import { App, Keymap, HoverParent, TFile } from "obsidian";
+import {
+	App,
+	Keymap,
+	HoverParent,
+	TFile,
+	BasesEntry,
+	BasesViewConfig,
+} from "obsidian";
 import { setEntryStatus } from "./status";
 
 /**
@@ -21,16 +28,15 @@ function parsePropertyId(propertyId: string): { type: string; name: string } {
  * @param statusProperty The name of the status property
  * @param newStatus The new status value
  */
-async function updateFileStatus(
+function updateFileStatus(
 	app: App,
 	file: TFile,
 	statusProperty: string,
 	newStatus: string
-): Promise<void> {
+): void {
 	try {
 		// Use the helper function from status.ts
 		setEntryStatus(file, app, statusProperty, newStatus);
-		
 	} catch (error) {
 		console.error(`[DragDrop] Error updating file status:`, error);
 	}
@@ -48,11 +54,11 @@ async function updateFileStatus(
  * @param onStatusChange Callback function when status changes
  */
 export function createKanbanCard(
-	entry: any,
+	entry: BasesEntry,
 	cardsContainer: HTMLElement,
 	app: App,
 	hoverParent: HoverParent,
-	config: any,
+	config: BasesViewConfig,
 	statusProperty: string,
 	currentStatus: string,
 	onStatusChange?: () => void
@@ -90,7 +96,7 @@ export function createKanbanCard(
 				linktext: entry.file.path,
 			});
 		});
-		
+
 		// Add drag event handlers
 		cardEl.addEventListener("dragstart", (e) => {
 			e.dataTransfer?.setData("text/plain", entry.file.path);
@@ -182,7 +188,7 @@ export function makeColumnDroppable(
 			const dragData = e.dataTransfer?.getData("application/json");
 			if (!dragData) return;
 
-			const { filePath, currentStatus, fileName } = JSON.parse(dragData);
+			const { filePath, currentStatus } = JSON.parse(dragData);
 
 			// Don't do anything if dropped in the same column
 			if (currentStatus === targetStatus) {
@@ -192,8 +198,7 @@ export function makeColumnDroppable(
 			// Find the file and update its status
 			const file = app.vault.getAbstractFileByPath(filePath);
 			if (file instanceof TFile) {
-				await updateFileStatus(app, file, statusProperty, targetStatus);
-
+				updateFileStatus(app, file, statusProperty, targetStatus);
 				// Call the callback to refresh the view
 				if (onDrop) {
 					onDrop();
